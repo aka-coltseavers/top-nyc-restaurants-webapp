@@ -36,8 +36,8 @@ Eric Galuskin Welcomes you to his NYC Restaurants Stat Project
                       <tr>
                          <td height="80" bgcolor="#b9c8e1">
                                     <div class="style1 style4" align="center">
-                                        <a href="/home">ETL with Fresh Data</a> ~
-                                        <a href="/myapp/results_ui">Check for Top 10 Grades for a Cusine</a> 
+                                        <!--<a href="/run_etl">ETL with Fresh Data</a> ~ -->
+                                        <a href="/results_ui">Check for Top 10 Grades for Thai Cusine</a> 
                                     </div>
                                 </td>
                             </tr>
@@ -57,12 +57,34 @@ Eric Galuskin Welcomes you to his NYC Restaurants Stat Project
                             </tr>
                             <tr>
                                 <td>
-                                    <table width="90%" border="0" align="center" cellpadding="0" cellspacing="6">
-                                        %for thai_restaurant in top_thai_restaurants:
+                                    <table width="90%" border="1" align="center" cellpadding="0" cellspacing="1">
                                         <tr>
-                                            <td class="label">Restaurant</td>
-                                            <td>{{thai_restaurant}}</td>
+                                            <td>Restaurant</td>
+                                            <td>Grade_Info</td>
+                                            <td>Borough</td>
+                                            <td>Address</td>
                                         </tr>
+                                        % for restaurant_doc in top_thai_restaurants:
+                                       <% 
+                                             restaurant_name = restaurant_doc['restaurant_name'].strip()
+                                             grade = restaurant_doc['grades'][0]['grade']
+                                             grade_date = restaurant_doc['grades'][0]['grade_date']
+                                             score = restaurant_doc['grades'][0]['score']
+                                             building_num = restaurant_doc['address']['building'].strip()
+                                             street_name = restaurant_doc['address']['street'].strip()
+                                             borough = restaurant_doc['boro'].strip()
+                                             zipcode = restaurant_doc['address']['zipcode']
+                                             address = building_num + ' ' + street_name + ' ' + zipcode
+                                             grade_info = grade + '  (' + str(score) + ')  ' 
+                                             grade_date_info = 'date of grade: ' + grade_date + ' '
+                                        %>
+                                        <tr>
+                                            <td>{{restaurant_name}}</td>
+                                            <td><div><div style="clear:both;">{{grade_info}}</div><div style="clear:both;">{{grade_date_info}}</div></div></td>
+                                            <td>{{borough}}</td>
+                                            <td>{{address}}</td>
+                                        </tr>
+                                        % end
                                     </table>
                                 </td>
                             </tr>

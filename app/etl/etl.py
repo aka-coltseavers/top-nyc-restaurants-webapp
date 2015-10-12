@@ -15,23 +15,23 @@ srcfile_dir = os.getcwd()
 csv_filepath = os.path.normpath(srcfile_dir + '/' + srcfile_name + '.csv')
 json_filepath = os.path.normpath(srcfile_dir + '/' + srcfile_name + '.json')
 csvfieldnames =  ( "restaurant_id",
-                           "restaurant_name",
-                           "boro",
-                           "building",
-                           "street",
-                           "zipcode",
-                           "phone",
-                           "cuisine",
-                           "inspection_date",
-                           "action",
-                           "violation_code",
-                           "violation_description",
-                           "critical_flag",
-                           "score",
-                           "grade",
-                           "grade_date",
-                           "record_date",
-                           "inspection_type" )
+                   "restaurant_name",
+                   "boro",
+                   "building",
+                   "street",
+                   "zipcode",
+                   "phone",
+                   "cuisine",
+                   "inspection_date",
+                   "action",
+                   "violation_code",
+                   "violation_description",
+                   "critical_flag",
+                   "score",
+                   "grade",
+                   "grade_date",
+                   "record_date",
+                   "inspection_type" )
 
 class Etl:
     """
@@ -69,6 +69,7 @@ class Etl:
                 if pctdone >= float(5 * i):
                     print("[%3.1f%%] downloaded" % pctdone)
                     i += 1
+            print("Finished EXTRACT step.  Now continuing to next step of ETL...")
 
     def transform(self, filepath, filename, fieldnames ):
         """
@@ -79,6 +80,7 @@ class Etl:
         rownum = 0
         with open(filepath, 'r') as csvfile:
             with open('%s.json' % filename, 'w') as jsonfile:
+                print("Beginning TRANSFORM step of ETL....")
                 reader = csv.DictReader(csvfile, fieldnames)
                 for row in reader:
                     if rownum != 0:
@@ -88,6 +90,7 @@ class Etl:
                         json.dump(row, jsonfile, ensure_ascii=True)
                         jsonfile.write('\n')
                     rownum += 1
+                print("Finished TRANSFORM step.  Now continuing to next step of ETL...")
 
     def load(self, filepath):
         """
@@ -96,15 +99,13 @@ class Etl:
         @param jsonfile: The JSON file of NYC Restaurant transformed from CSV
         """
         with open(filepath, 'r') as jsonfile:
+            print("Beginning LOAD step of ETL...")
             for line in jsonfile:
                 doc = json.loads(str(line))
-                if doc['grade_date']:
-                    grade_date = datetime.strptime(doc['grade_date'], "%m/%d/%Y")
-                else:
-                    grade_date = None
-                grade_doc =  {"grade_date": grade_date,
-                              "grade": doc.get('grade', None),
-                              "score": doc.get('score', None)
+                if doc['grade_date'] != '' and doc['grade'] != '' and doc['score'] != '':
+                    grade_doc =  {"grade_date": doc['grade_date'].strip(),
+                              "grade": doc['grade'].strip(),
+                              "score": int(doc['score'].strip())
                              }
 
                 restaurant_doc = {"address": {"street": doc['street'],
@@ -112,10 +113,10 @@ class Etl:
                                               "building": doc['building'],
                                               "phone" : doc['phone']
                                              },
-                                  "borough": doc['boro'],
+                                  "boro": doc['boro'],
                                   "cuisine": doc['cuisine'],
                                   "grades": [grade_doc],
-                                  "name": doc['restaurant_name'],
+                                  "restaurant_name": doc['restaurant_name'],
                                   "restaurant_id": doc['restaurant_id'],
                                   "_id" : doc['restaurant_id']
                                  }
@@ -123,8 +124,16 @@ class Etl:
                 if find_doc is None:
                     self.collection.insert_one(restaurant_doc)
                 else:
-                    find_doc["grades"].append(grade_doc)
-                    self.collection.replace_one({"_id" : doc['restaurant_id']}, find_doc)
+                    find_dupe_grade_doc = self.collection.find({"_id" : doc['restaurant_id'], 
+                                                                                                 "grades.grade_date": doc['grade_date'],
+                                                                                                 "grades.grade": doc['grade'],
+                                                                                                 "grades.score": doc['score']
+                    })
+                    
+                    if find_dupe_grade_doc == None and doc['grade_date'] != None and doc['grade'] != None and doc['score'] != None:
+                        find_doc["grades"].append(grade_doc)
+                        self.collection.replace_one({"_id" : doc['restaurant_id']}, find_doc)
+            print("Finished LOAD step.  ETL process complete.")
 
 #------------------------------------------------------------------------------
 # Script Entry Point

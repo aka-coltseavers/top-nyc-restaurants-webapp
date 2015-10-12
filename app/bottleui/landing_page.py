@@ -9,7 +9,7 @@ db = connection.orchard
 
 @bottle.route('/')
 @bottle.route('/home')
-def default():
+def index():
     return bottle.template('layout.html')
 
 #@route('/run_etl')
@@ -33,7 +33,8 @@ def get_top_thai_restaurants():
     """
     pipeline = [{"$match" : {"cuisine": "Thai"}},
                 {"$match" : {"grades.grade" : {"$in" : ["A","B"]}}},
-                {"$project" : {"_id" : 0, "restaurant_name": 1, "address": 1, "boro": 1}},
+                {"$sort" : {"grades.grade": 1, "grades.score": -1}},
+                {"$project" : {"_id" : 0, "restaurant_name": 1, "address": 1, "boro": 1, "grades": 1}},
                 {"$limit" : 10}
                ]
     return list(db.doh_nyc_restaurants.aggregate(pipeline))
