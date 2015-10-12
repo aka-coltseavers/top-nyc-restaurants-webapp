@@ -1,8 +1,5 @@
-# top-nyc-restaurants-webapp
-
-#Schema Design:
---
-<pre>
+Schema Design:
+-----------------
 { _id: restaurant_id (unique),
   restaurant_id: (maps to CAMIS of csv),
   restaurant_name: (maps to DBA of csv),
@@ -27,20 +24,19 @@
             }, ...
   ]
 }
-</pre>
 
-#Description of Selection of Included schema design:
---
-- Top Level Fields such as Restaurant_Id, Restaurant_Name, and Cusine, were identified as
+Description of Selection of Included schema design:
+---------------------------------------------------
+Top Level Fields such as Restaurant_Id, Restaurant_Name, and Cusine, were identified as
 "top level" fields because the entity can only have 1(one) value applied in that field.
-- Restaurant_Id was identified as the identifier for the row as a unique entity (i.e. combination
+Restaurant_Id was identified as the identifier for the row as a unique entity (i.e. combination
 of Restaurant_Name/DBA and Address/Building+Street+Zipcode).
-- Address was made into a sub-document or dictionary of 4 fields (Building, Street, Zipcode, and Phone).
+Address was made into a sub-document or dictionary of 4 fields (Building, Street, Zipcode, and Phone).
 This was chosen so that any enhancement of map or location integration could be accomodated.  (One could
 adjust the scope of viewing from restaurants in zipcode or street).
-- The choice to not have Boro included in the Address dict was mostly due to 
+The choice to not have Boro included in the Address dict was mostly due to 
 boro is subject to only one value for a given entity (like the top level fields).
-- Grades is a list of dictionaries that are comprised of 3 fields, grade_date, grade, and score.
+Grades is a list of dictionaries that are comprised of 3 fields, grade_date, grade, and score.
 These are the 3 values that constitute a valid record providing a Graded Inspecition.
 There can be a history of Grades therefore the list of grade records are able to be appended as
 they enter the system (and are not duplicates of records already recorded in list).
