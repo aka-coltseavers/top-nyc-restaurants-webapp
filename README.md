@@ -1,5 +1,32 @@
 # top-nyc-restaurants-webapp
 
+#Requirements:
+--
+- Requires Python3 be already installed on local machine
+- Requires virtualenv package (version 11.0 or higher) installed and exists in PATH environment variable
+- MacOS or Linux (tested with MacOS)
+- Internet-connection
+
+#Usage Instructions:
+--
+- clone this repo to your localmachine
+- cd into subfolder "scripts/" (<reponame>/scripts/)
+- run from terminal shell:
+<code>./custom_venv_prep.sh</code>
+- read and follow the instructions displayed at the end of script output
+- run the command to start the virtual environment created by script 
+-* (copy and paste that command it says to run at the end of script output from above)
+- start mongod by running:
+<code>mongod --dbpath <path_to_mongodb_installation_parent_dir>/mongo_data/db &</code>
+- cd to the repo subfolder "app" and run:
+<code>python setup.py develop</code>
+- then, run the ETL using this command:
+<code>cd <wc_of_git_repo>/app/etl; python etl.py</code>
+- once ETL has been run to completion successfully, run the following command:
+<code>cd <wc_of_git_repo>/app/bottleui; python landing_page.py</code>
+- To see web interface, go to http://localhost:8082/ in your webbrowser, click on the link "Check Top Thai Restaurants" to see results.
+-* or just enter "http://localhost:8082/results_ui" in your webbrowser to go directly to the results display page
+
 #Schema Design:
 --
 <pre>
