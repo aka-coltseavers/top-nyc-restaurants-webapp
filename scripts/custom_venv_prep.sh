@@ -4,28 +4,48 @@ CURRDIR=$(dirname $0)
 cd $CURRDIR/../
 PROJECT_REPO_ROOTDIR=$(pwd)
 
-VENV_WORKSPACE_ROOTDIR=$HOME/custom_venv_test_library
+VENV_WORKSPACE_ROOTDIR=/opt/egdemo_orchard_venv_library
 MONGODB_INSTALL_DESTDIR=/opt
 MONGODB_VERSION=3.0.6
 
+CHECK_OS_TYPE=`uname`
+case ${CHECK_OS_TYPE} in
+Darwin ) CURR_OS_TYPE=osx;;
+Linux ) CURR_OS_TYPE=linux;;
+* ) echo "Unrecognized Operating System Type...defaulting to linux..."; CURR_OS_TYPE=linux;;
+esac
+
+#TODO - automate (likely via ansible) the installation of python v3.3.5 for YUM-based Linux Distro's
+
+# Ensure mongoDB is installed and setup with the expected filepaths and writability
 function establish_mongodb_exists() {
     if [[ ! -e "${MONGODB_INSTALL_DESTDIR}" ]] ; then
         mkdir ${MONGODB_INSTALL_DESTDIR}
     fi
     if [[ -z `ls -Am ${MONGODB_INSTALL_DESTDIR} | grep -o "mongodb"` ]] ; then
         cd /tmp/
-        curl -O https://fastdl.mongodb.org/osx/mongodb-osx-x86_64-${MONGODB_VERSION}.tgz
+        curl -O https://fastdl.mongodb.org/${CURR_OS_TYPE}/mongodb-${CURR_OS_TYPE}-x86_64-${MONGODB_VERSION}.tgz
         cd ${MONGODB_INSTALL_DESTDIR}
-        tar -zxvf /tmp/mongodb-osx-x86_64-${MONGODB_VERSION}.tgz
-        mv mongodb-osx-x86_64-${MONGODB_VERSION} mongodb
-        rm /tmp/mongodb-osx-x86_64-${MONGODB_VERSION}.tgz
-    fi
-    #---[ Adding MongoDB to PATH variable for environment ]---
-    MONGODB_BIN_PATH=${MONGODB_INSTALL_DESTDIR}/mongodb/bin
-    if ([[ -e "$MONGODB_BIN_PATH" ]] && [[ -z `echo $PATH | grep -o "${MONGODB_BIN_PATH}"` ]]) ; then
-        export PATH=$PATH:$MONGODB_BIN_PATH
+        tar -zxvf /tmp/mongodb-${CURR_OS_TYPE}-x86_64-${MONGODB_VERSION}.tgz
+        mv mongodb-${CURR_OS_TYPE}-x86_64-${MONGODB_VERSION} mongodb
+        rm /tmp/mongodb-${CURR_OS_TYPE}-x86_64-${MONGODB_VERSION}.tgz
+        mkdir -p ${MONGODB_INSTALL_DESTDIR}/mongo_data/db
+        chmod 777 ${MONGODB_INSTALL_DESTDIR}/mongo_data/db
+        
     fi
     cd ${PROJECT_REPO_ROOTDIR}
+}
+
+function add_helper_aliases_to_bashprofile() {
+    cat ${PROJECT_REPO_ROOTDIR}/scripts/add_python33_to_path_codeblock.txt >> $HOME/.bash_profile
+    if [ "$CURR_OS_TYPE" == "osx" ] ; then
+        cat ${PROJECT_REPO_ROOTDIR}/scripts/add_python33_to_path_codeblock.txt >> $HOME/.profile
+    fi
+    MONGOD_ALIAS_COMMAND_STRING="alias start_demo_mongod=\"mongod --dbpath ${MONGODB_INSTALL_DESTDIR}/mongo_data/db &\""
+    echo ${MONGOD_ALIAS_COMMAND_STRING} >> $HOME/.bash_profile
+    if [ "$CURR_OS_TYPE" == "osx" ] ; then
+        echo ${MONGOD_ALIAS_COMMAND_STRING} >> $HOME/.profile
+    fi
 }
 
 function add_python33_to_path() {
@@ -37,6 +57,10 @@ function add_python33_to_path() {
 }
 
 function establish_python_venv_container() {
+    source $HOME/.bash_profile
+    if [ "$CURR_OS_TYPE" == "osx" ] ; then
+        source $HOME/.profile
+    fi
     add_python33_to_path
     if [[ ! -e "${VENV_WORKSPACE_ROOTDIR}" ]] ; then
         mkdir ${VENV_WORKSPACE_ROOTDIR}
@@ -50,8 +74,10 @@ function establish_python_venv_container() {
         cd ${VENV_WORKSPACE_ROOTDIR}/
         virtualenv --always-copy --no-wheel --python=$(which python3.3) venv-${PROJECT_WC_DIRNAME}
         ALIAS_COMMAND_STRING="alias start_venv-${PROJECT_WC_DIRNAME}=\"add_python33_to_path; source ${VENV_WORKSPACE_ROOTDIR}/venv-${PROJECT_WC_DIRNAME}/bin/activate\""
-        echo ${ALIAS_COMMAND_STRING} >> $HOME/.profile
         echo ${ALIAS_COMMAND_STRING} >> $HOME/.bash_profile
+        if [ "$CURR_OS_TYPE" == "osx" ] ; then
+            echo ${ALIAS_COMMAND_STRING} >> $HOME/.profile
+        fi
     fi
     
     # Printout Instructions and Prerequisites for running the project app
@@ -68,5 +94,8 @@ function establish_python_venv_container() {
     
 }
 
-establish_mongodb_exists
+if [[ ! -e "${MONGODB_INSTALL_DESTDIR}/mongo_data/db" ]] ; then
+    establish_mongodb_exists
+    add_helper_aliases_to_bashprofile
+fi
 establish_python_venv_container

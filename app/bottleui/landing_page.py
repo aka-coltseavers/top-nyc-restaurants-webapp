@@ -40,4 +40,4 @@ def get_top_thai_restaurants():
     return list(db.doh_nyc_restaurants.aggregate(pipeline))
 
 # Start the webserver running and wait for requests
-bottle.run(host='localhost', port=8082) 
+bottle.run(host='0.0.0.0', port=8080) 
