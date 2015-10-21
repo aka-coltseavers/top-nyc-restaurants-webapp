@@ -1,15 +1,14 @@
 import pymongo
-import urllib.request
-import urllib.parse
-import urllib.error
+import urllib
+import urllib2
 import csv
 import json
 import os
 import os.path
 from datetime import datetime
 
-#url = 'https://nycopendata.socrata.com/api/views/xx67-kt59/rows.csv?accessType=DOWNLOAD'
-url = 'https://s3.amazonaws.com/egcustom_cloudstorage_for_temp_filesharing/DOHMH_New_York_City_Restaurant_Inspection_Results.csv'
+url = 'https://nycopendata.socrata.com/api/views/xx67-kt59/rows.csv?accessType=DOWNLOAD'
+#url = 'https://s3.amazonaws.com/egcustom_cloudstorage_for_temp_filesharing/DOHMH_New_York_City_Restaurant_Inspection_Results.csv'
 srcfile_name = 'doh_nyc_restaurants'
 srcfile_dir = os.getcwd()
 csv_filepath = os.path.normpath(srcfile_dir + '/' + srcfile_name + '.csv')
@@ -42,7 +41,7 @@ class Etl:
         Intialize the class
         """
         self.connection = pymongo.MongoClient()
-        self.db = self.connection.orchard 
+        self.db = self.connection.orchard_passed 
         self.collection = self.db.doh_nyc_restaurants
 
     def extract(self, url, filename):
@@ -51,25 +50,37 @@ class Etl:
         
         @param url: URL where the datafile is present
         """
-        response = urllib.request.urlopen(url)
-        with open( '%s.csv' % filename, 'wb') as srcfile:
-            file_size_dl = 0
-            block_sz = 8192
-            meta = dict(response.info())
-            file_size = int(meta['Content-Length'])
-            print(file_size)
-            i = 0
-            while True:
-                buffer = response.read(block_sz)
-                if not buffer:
-                    break
-                file_size_dl += len(buffer)
-                srcfile.write(buffer)
-                pctdone = (file_size_dl * 100. / file_size)
-                if pctdone >= float(5 * i):
-                    print("[%3.1f%%] downloaded" % pctdone)
-                    i += 1
-            print("Finished EXTRACT step.  Now continuing to next step of ETL...")
+        req = urllib2.Request(url)
+        try:
+            response = urllib2.urlopen(req, timeout=180)
+        except URLError as e:
+            if hasattr(e, 'reason'):
+                print 'We failed to reach a server.'
+                print 'Reason: ', e.reason
+            elif hasattr(e, 'code'):
+                print 'The server couldn\'t fulfill the request.'
+                print 'Error code: ', e.code
+        else:
+            with open( '%s.csv' % filename, 'wb') as srcfile:
+                file_size_dl = 0
+                block_sz = 8192
+                print response.info()
+                meta = dict(response.info())
+                #print(meta)
+                file_size = int(meta['content-length'])
+                print(file_size)
+                i = 0
+                while True:
+                    buffer = response.read(block_sz)
+                    if not buffer:
+                        break
+                    file_size_dl += len(buffer)
+                    srcfile.write(buffer)
+                    pctdone = (file_size_dl * 100. / file_size)
+                    if pctdone >= float(5 * i):
+                        print("[%3.1f%%] downloaded" % pctdone)
+                        i += 1
+                print("Finished EXTRACT step.  Now continuing to next step of ETL...")
 
     def transform(self, filepath, filename, fieldnames ):
         """

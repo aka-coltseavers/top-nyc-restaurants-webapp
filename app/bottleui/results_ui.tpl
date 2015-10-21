@@ -95,7 +95,7 @@ Eric Galuskin Welcomes you to his NYC Restaurants Stat Project
                     <td height="40" bgcolor="#36609d">
                         <div align="center">
                             <p align="center" class="style2 style3">
-                                <FONT face="Tahoma">made for The Orchard in October of 2015 by Eric Galuskin </FONT>
+                                <FONT face="Tahoma">made in October of 2015 by Eric Galuskin,  for The Orchard  (who passed on him, with no feedback given why)</FONT>
                             </p>
                         </div>
                     </td>
