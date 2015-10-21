@@ -4,16 +4,22 @@ CURRDIR=$(dirname $0)
 cd $CURRDIR/../
 PROJECT_REPO_ROOTDIR=$(pwd)
 
-VENV_WORKSPACE_ROOTDIR=/opt/egdemo_orchard_venv_library
-MONGODB_INSTALL_DESTDIR=/opt
-MONGODB_VERSION=3.0.6
-
 CHECK_OS_TYPE=`uname`
 case ${CHECK_OS_TYPE} in
 Darwin ) CURR_OS_TYPE=osx;;
 Linux ) CURR_OS_TYPE=linux;;
 * ) echo "Unrecognized Operating System Type...defaulting to linux..."; CURR_OS_TYPE=linux;;
 esac
+
+if [ "$CURR_OS_TYPE" == "osx" ] ; then
+    VENV_WORKSPACE_ROOTDIR=~/custom_python33_venv_library
+    MONGODB_INSTALL_DESTDIR=/Developer/alt_dev_tools
+else
+    VENV_WORKSPACE_ROOTDIR=/opt/custom_python33_venv_library
+    MONGODB_INSTALL_DESTDIR=/opt
+fi
+MONGODB_VERSION=3.0.6
+
 
 #TODO - automate (likely via ansible) the installation of python v3.3.5 for YUM-based Linux Distro's
 
@@ -41,6 +47,10 @@ function add_helper_aliases_to_bashprofile() {
     if [ "$CURR_OS_TYPE" == "osx" ] ; then
         cat ${PROJECT_REPO_ROOTDIR}/scripts/add_python33_to_path_codeblock.txt >> $HOME/.profile
     fi
+    #cat ${PROJECT_REPO_ROOTDIR}/scripts/add_python27_to_path_codeblock.txt >> $HOME/.bash_profile
+    #if [ "$CURR_OS_TYPE" == "osx" ] ; then
+    #    cat ${PROJECT_REPO_ROOTDIR}/scripts/add_python27_to_path_codeblock.txt >> $HOME/.profile
+    #fi
     MONGOD_ALIAS_COMMAND_STRING="alias start_demo_mongod=\"mongod --dbpath ${MONGODB_INSTALL_DESTDIR}/mongo_data/db &\""
     echo ${MONGOD_ALIAS_COMMAND_STRING} >> $HOME/.bash_profile
     if [ "$CURR_OS_TYPE" == "osx" ] ; then
@@ -50,9 +60,17 @@ function add_helper_aliases_to_bashprofile() {
 
 function add_python33_to_path() {
     #---[ Adding Python-v3.3 to PATH variable for environment ]---
-    PYTHON3_BIN_PATH=$(which python3.3 | sed -e "s/\/python3\.3//")
-    if ([[ -e "$PYTHON3_BIN_PATH" ]] && [[ -z `echo $PATH | grep -o "${PYTHON3_BIN_PATH}"` ]]) ; then
-        export PATH=$PYTHON3_BIN_PATH:$PATH
+    PYTHON33_BIN_PATH=$(which python3.3 | sed -e "s/\/python3\.3//")
+    if ([[ -e "$PYTHON33_BIN_PATH" ]] && [[ -z `echo $PATH | grep -o "${PYTHON33_BIN_PATH}"` ]]) ; then
+        export PATH=$PYTHON33_BIN_PATH:$PATH
+    fi
+}
+
+function add_python27_to_path() {
+    #---[ Adding Python-v2.7 to PATH variable for environment ]---
+    PYTHON27_BIN_PATH=$(which python2.7 | sed -e "s/\/python2\.7//")
+    if ([[ -e "$PYTHON27_BIN_PATH" ]] && [[ -z `echo $PATH | grep -o "${PYTHON27_BIN_PATH}"` ]]) ; then
+        export PATH=$PYTHON27_BIN_PATH:$PATH
     fi
 }
 
@@ -62,6 +80,7 @@ function establish_python_venv_container() {
         source $HOME/.profile
     fi
     add_python33_to_path
+    #add_python27_to_path
     if [[ ! -e "${VENV_WORKSPACE_ROOTDIR}" ]] ; then
         mkdir ${VENV_WORKSPACE_ROOTDIR}
     fi
@@ -73,7 +92,9 @@ function establish_python_venv_container() {
     if [[ -z `ls -Am ${VENV_WORKSPACE_ROOTDIR} | grep -o "venv-${PROJECT_WC_DIRNAME}"` ]] ; then
         cd ${VENV_WORKSPACE_ROOTDIR}/
         virtualenv --always-copy --no-wheel --python=$(which python3.3) venv-${PROJECT_WC_DIRNAME}
-        ALIAS_COMMAND_STRING="alias start_venv-${PROJECT_WC_DIRNAME}=\"add_python33_to_path; source ${VENV_WORKSPACE_ROOTDIR}/venv-${PROJECT_WC_DIRNAME}/bin/activate\""
+        ALIAS_COMMAND_STRING="alias start_python33_venv-${PROJECT_WC_DIRNAME}=\"add_python33_to_path; source ${VENV_WORKSPACE_ROOTDIR}/venv-${PROJECT_WC_DIRNAME}/bin/activate\""
+        #virtualenv --always-copy --no-wheel --python=$(which python2.7) venv-${PROJECT_WC_DIRNAME}
+        #ALIAS_COMMAND_STRING="alias start_python27_venv-${PROJECT_WC_DIRNAME}=\"add_python27_to_path; source ${VENV_WORKSPACE_ROOTDIR}/venv-${PROJECT_WC_DIRNAME}/bin/activate\""
         echo ${ALIAS_COMMAND_STRING} >> $HOME/.bash_profile
         if [ "$CURR_OS_TYPE" == "osx" ] ; then
             echo ${ALIAS_COMMAND_STRING} >> $HOME/.profile
@@ -91,6 +112,8 @@ function establish_python_venv_container() {
     echo " "
     echo "Then run the following command:"
     echo "   source ${VENV_WORKSPACE_ROOTDIR}/venv-${PROJECT_WC_DIRNAME}/bin/activate"
+    echo " OR "
+    echo "  just re-source your bash_profile and run:  start_python33_venv-${PROJECT_WC_DIRNAME} "
     
 }
 

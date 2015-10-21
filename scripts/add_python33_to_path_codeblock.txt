@@ -8,9 +8,9 @@ fi
 
 function add_python33_to_path() {
     #---[ Adding Python-v3.3 to PATH variable for environment ]---
-    PYTHON3_BIN_PATH=$(which python3.3 | sed -e "s/\/python3\.3//")
-    if ([[ -e "$PYTHON3_BIN_PATH" ]] && [[ -z `echo $PATH | grep -o "${PYTHON3_BIN_PATH}"` ]]) ; then
-        export PATH=$PYTHON3_BIN_PATH:$PATH
+    PYTHON33_BIN_PATH=$(which python3.3 | sed -e "s/\/python3\.3//")
+    if ([[ -e "$PYTHON33_BIN_PATH" ]] && [[ -z `echo $PATH | grep -o "${PYTHON33_BIN_PATH}"` ]]) ; then
+        export PATH=$PYTHON33_BIN_PATH:$PATH
     fi
 }
 
