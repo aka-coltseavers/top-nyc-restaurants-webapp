@@ -9,14 +9,14 @@ tests_require = [ 'nose', 'coverage', 'virtualenv']
 requires = ['pymongo', 'bottle', 'jinja2']
 
 setup(name='top-nyc-restaurants-submission',
-      version='0.1',
-      description='orchard code sample',
+      version='0.2',
+      description='bottle version of practice webapp code project (originally started as the orchard code sample',
       classifiers=[
           "Programming Language :: Python", ],
       author='',
       author_email='',
       url='',
-      keywords='web orchard etl',
+      keywords='webapp orchard etl bottle-framework mongodb',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,
