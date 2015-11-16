@@ -6,13 +6,14 @@ import json
 import os
 import os.path
 from datetime import datetime
+from threading import Thread
+from time import sleep
 
+#ETL_SRCFILE_DIRECTORY = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+ETL_SRCFILE_DIRECTORY = os.getcwd()  # aka ETL_SRCFILE_DIRECTORY
 url = 'https://nycopendata.socrata.com/api/views/xx67-kt59/rows.csv?accessType=DOWNLOAD'
-#url = 'https://s3.amazonaws.com/egcustom_cloudstorage_for_temp_filesharing/DOHMH_New_York_City_Restaurant_Inspection_Results.csv'
-srcfile_name = 'doh_nyc_restaurants'
-srcfile_dir = os.getcwd()
-csv_filepath = os.path.normpath(srcfile_dir + '/' + srcfile_name + '.csv')
-json_filepath = os.path.normpath(srcfile_dir + '/' + srcfile_name + '.json')
+#backup_static_url = 'https://s3.amazonaws.com/egcustom_cloudstorage_for_temp_filesharing/DOHMH_New_York_City_Restaurant_Inspection_Results.csv'
+
 csvfieldnames =  ( "restaurant_id",
                    "restaurant_name",
                    "boro",
@@ -32,6 +33,20 @@ csvfieldnames =  ( "restaurant_id",
                    "record_date",
                    "inspection_type" )
 
+srcfile_prefix = 'doh_nyc_restaurants'
+extract_status_log_prefix = 'etl-extract-status-%s-' % srcfile_prefix
+#output_etlextract_status_file = tempfile.NamedTemporaryFile(suffix='.log', prefix=extract_status_log_prefix)
+#output_file = tempfile.NamedTemporaryFile(suffix='.log', prefix=srcfile_prefix)
+
+#srcfile_dir = os.getcwd()  # aka ETL_SRCFILE_DIRECTORY
+temp_etl_output_dir = ETL_SRCFILE_DIRECTORY + '/temp_etl_output_dir'
+if os.path.exists(temp_etl_output_dir) == False:
+    os.mkdir(temp_etl_output_dir)
+
+csv_filepath = os.path.normpath(ETL_SRCFILE_DIRECTORY + '/temp_etl_output_dir/' + srcfile_prefix + '.csv')
+json_filepath = os.path.normpath(ETL_SRCFILE_DIRECTORY + '/temp_etl_output_dir/' + srcfile_prefix + '.json')
+
+
 class Etl:
     """
     Performs ETL for NYC Restaurant data
@@ -41,7 +56,7 @@ class Etl:
         Intialize the class
         """
         self.connection = pymongo.MongoClient()
-        self.db = self.connection.orchard_passed 
+        self.db = self.connection.orchard_passed_test1 
         self.collection = self.db.doh_nyc_restaurants
 
     def extract(self, url, filename):
@@ -61,7 +76,7 @@ class Etl:
                 print 'The server couldn\'t fulfill the request.'
                 print 'Error code: ', e.code
         else:
-            with open( '%s.csv' % filename, 'wb') as srcfile:
+            with open( 'temp_etl_output_dir/%s.csv' % filename, 'wb') as srcfile:
                 file_size_dl = 0
                 block_sz = 8192
                 print response.info()
@@ -90,7 +105,7 @@ class Etl:
         """
         rownum = 0
         with open(filepath, 'r') as csvfile:
-            with open('%s.json' % filename, 'w') as jsonfile:
+            with open('temp_etl_output_dir/%s.json' % filename, 'w') as jsonfile:
                 print("Beginning TRANSFORM step of ETL....")
                 reader = csv.DictReader(csvfile, fieldnames)
                 for row in reader:
@@ -111,40 +126,48 @@ class Etl:
         """
         with open(filepath, 'r') as jsonfile:
             print("Beginning LOAD step of ETL...")
+            line_counter = 0
+            valid_gradedoc_line_counter = 0
             for line in jsonfile:
+                grade_doc = {}
+                restaurant_doc = {}
                 doc = json.loads(str(line))
-                if doc['grade_date'] != '' and doc['grade'] != '' and doc['score'] != '':
-                    grade_doc =  {"grade_date": doc['grade_date'].strip(),
-                              "grade": doc['grade'].strip(),
-                              "score": int(doc['score'].strip())
-                             }
-
-                restaurant_doc = {"address": {"street": doc['street'],
-                                              "zipcode": doc['zipcode'],
-                                              "building": doc['building'],
-                                              "phone" : doc['phone']
-                                             },
-                                  "boro": doc['boro'],
-                                  "cuisine": doc['cuisine'],
-                                  "grades": [grade_doc],
-                                  "restaurant_name": doc['restaurant_name'],
-                                  "restaurant_id": doc['restaurant_id'],
-                                  "_id" : doc['restaurant_id']
-                                 }
-                find_doc = self.collection.find_one({"_id" : doc['restaurant_id']})
+                find_doc = self.collection.find_one({"restaurant_id": doc['restaurant_id']})
                 if find_doc is None:
-                    self.collection.insert_one(restaurant_doc)
-                else:
-                    find_dupe_grade_doc = self.collection.find({"_id" : doc['restaurant_id'], 
-                                                                                                 "grades.grade_date": doc['grade_date'],
-                                                                                                 "grades.grade": doc['grade'],
-                                                                                                 "grades.score": doc['score']
+                    find_doc = {"address": {"street": doc['street'].strip(),
+                                                  "zipcode": doc['zipcode'],
+                                                  "building": doc['building'].strip(),
+                                                  "phone" : doc['phone']
+                                                 },
+                                      "boro": doc['boro'],
+                                      "cuisine": doc['cuisine'],
+                                      "grades": [],
+                                      "restaurant_name": doc['restaurant_name'],
+                                      "restaurant_id": doc['restaurant_id'],
+                                      "_id": doc['restaurant_id']
+                                     }
+                    self.collection.insert_one(find_doc)
+                    
+                if doc['grade_date'] != '' and doc['grade'] != '' and doc['score'] != '':
+                    grade_doc['grade_date'] =  doc['grade_date'].strip()
+                    grade_doc['grade'] = doc['grade'].strip()
+                    grade_doc['score'] = doc['score']
+                    
+                    find_dupe_grade_doc = self.collection.find_one({"restaurant_id": doc['restaurant_id'], 
+                                                                  "grades": { "$elemMatch":  { "grade_date": grade_doc['grade_date'], "grade": grade_doc['grade'], "score": grade_doc['score'] }}
                     })
                     
-                    if find_dupe_grade_doc == None and doc['grade_date'] != None and doc['grade'] != None and doc['score'] != None:
+                    if find_dupe_grade_doc == None: #and grade_doc['grade_date'] != None and grade_doc['grade'] != None and grade_doc['score'] != None:
                         find_doc["grades"].append(grade_doc)
-                        self.collection.replace_one({"_id" : doc['restaurant_id']}, find_doc)
+                        self.collection.replace_one({"_id": doc['restaurant_id']}, find_doc)
+                        valid_gradedoc_line_counter += 1
+                line_counter += 1
             print("Finished LOAD step.  ETL process complete.")
+            print("------------------------")
+            print("Total Processed Lines: %d" % line_counter)
+            print("Total Processed Valid Graded Lines: %d" % valid_gradedoc_line_counter)
+            print("------------------------")
+            #shutil.rmtree(temp_etl_output_dir)
 
 #------------------------------------------------------------------------------
 # Script Entry Point
@@ -152,6 +175,6 @@ class Etl:
 if __name__ == '__main__':
 
      etl = Etl()
-     etl.extract(url, srcfile_name)
-     etl.transform(csv_filepath, srcfile_name, csvfieldnames)
+     etl.extract(url, srcfile_prefix)
+     etl.transform(csv_filepath, srcfile_prefix, csvfieldnames)
      etl.load(json_filepath)
